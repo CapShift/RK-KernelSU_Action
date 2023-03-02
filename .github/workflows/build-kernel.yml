@@ -5,50 +5,45 @@ on:
 
     inputs:
       KERNEL_SOURCE:
-        description: 'Kernel Source'
+        description: '内核源码GITHUB地址'
         required: true
         default: 'Rohail33/RealKing-kernel-SM8250'
       KERNEL_SOURCE_BRANCH:
-        description: 'Branch'
+        description: '内核源码分支'
         required: true
         default: '12.1-alioth'
       KERNEL_DEFCONFIG:
-        description: 'Defconfig'
+        description: '内核配置文件'
         required: true
         default: 'vendor/alioth_defconfig'
       TARGET_ARCH:
-        description: 'Target ARCH'
+        description: '机型架构'
         required: true
         default: 'arm64'
       KERNEL_FILE:
-        description: 'Your kernel out image name'
+        description: '编译后的内核名称'
         required: true
         default: 'Image.gz'
       CLANG_URL:
-        description: 'Clang URL'
+        description: '交叉编译器Clang网址'
         required: true
         default: 'https://github.com/ZyCromerZ/Clang/releases/download/17.0.0-20230217-release/Clang-17.0.0-20230217.tar.gz'
       BUILD_EXTRA_COMMAND:
-        description: 'Extra build commands(e.g. LLVM=1 LLVM_IAS=1)'
+        description: '编译器附加参数(e.g. LLVM=1 LLVM_IAS=1)'
         required: false
         default: 'NM=llvm-nm OBJDUMP=llvm-objdump STRIP=llvm-strip'
       USE_KERNELSU:
-        description: 'Build With KernelSU'
+        description: '内核加入KernelSU模块'
         required: true
         default: 'true'
         type: boolean
       USE_KPROBES:
-        description: 'Build With Kprobes'
+        description: '内核启用Kprobes模块'
         required: false
         default: 'false'
         type: boolean
       COMPRESS_DTBO_IMAGE:
-        description: 'Make dtbo.img in Anykernel zip'
-        required: false
-        default: 'false'
-        type: boolean
-      COMPRESS_DTB:
-        description: 'Make dtb in Anykernel zip'
+        description: '将dtbo.img/dtb打包'
         required: false
         default: 'false'
         type: boolean
@@ -188,17 +183,17 @@ jobs:
         sed -i 's/device.name5=/device.name1=${{ env.DEVICE }}/g' anykernel.sh
         sed -i 's!block=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;!block=auto;!g' anykernel.sh
         sed -i 's/is_slot_device=0;/is_slot_device=auto;/g' anykernel.sh
+ 
         if [ ${{ env.CHECK_KERNEL_FILE_IS_OK }} = true ] ; then
             cp -fp ../android-kernel/out/arch/${{ env.TARGET_ARCH }}/boot/${{ env.KERNEL_FILE }} ./
         fi
         if [ ${{ env.CHECK_DTBO_IS_OK }} = true ] ; then
             if [ ${{ env.COMPRESS_DTBO_IMAGE }} = true ] ; then
                 cp -fp ../android-kernel/out/arch/${{ env.TARGET_ARCH }}/boot/dtbo.img ./
+                cp -fp ../android-kernel/out/arch/${{ env.TARGET_ARCH }}/boot/dtb ./
             fi
         fi
-        if [ ${{ env.COMPRESS_DTB }} = true ] ; then
-            cp -fp ../android-kernel/out/arch/${{ env.TARGET_ARCH }}/boot/dtb ./
-        fi
+
         cp -fp ../android-kernel/out/.config ./
         cp -fp ../android-kernel/out/defconfig ./
         rm -rf .git* modules patch ramdisk README* LICENSE
