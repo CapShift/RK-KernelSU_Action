@@ -32,18 +32,23 @@ on:
         description: 'Extra build commands(e.g. LLVM=1 LLVM_IAS=1)'
         required: false
         default: 'NM=llvm-nm OBJDUMP=llvm-objdump STRIP=llvm-strip'
-      USE_KPROBES:
-        description: 'Use Kprobes'
-        required: false
-        default: 'true'
-        type: boolean
       USE_KERNELSU:
-        description: 'Use KernelSU'
+        description: 'Build With KernelSU'
         required: true
         default: 'true'
         type: boolean
-      SSH:
-        description: 'SSH connection to Actions'
+      USE_KPROBES:
+        description: 'Build With Kprobes'
+        required: false
+        default: 'false'
+        type: boolean
+      COMPRESS_DTBO_IMAGE:
+        description: 'Make dtbo.img in Anykernel zip'
+        required: false
+        default: 'false'
+        type: boolean
+      COMPRESS_DTB:
+        description: 'Make dtb in Anykernel zip'
         required: false
         default: 'false'
         type: boolean
@@ -66,7 +71,8 @@ jobs:
         echo "BUILD_EXTRA_COMMAND=${{ github.event.inputs.BUILD_EXTRA_COMMAND }}" >> $GITHUB_ENV
         echo "USE_KPROBES=${{ github.event.inputs.USE_KPROBES }}" >> $GITHUB_ENV
         echo "USE_KERNELSU=${{ github.event.inputs.USE_KERNELSU }}" >> $GITHUB_ENV
-        echo "SSH=${{ github.event.inputs.SSH }}" >> $GITHUB_ENV
+        echo "COMPRESS_DTBO_IMAGE=${{ github.event.inputs.COMPRESS_DTBO_IMAGE }}" >> $GITHUB_ENV
+        echo "COMPRESS_DTB=${{ github.event.inputs.COMPRESS_DTB }}" >> $GITHUB_ENV
 
     - name: Setup build kernel environment
       run: |
@@ -110,6 +116,11 @@ jobs:
                 echo "KernelSU Patching failed"
             fi
         fi
+        cd KernelSU
+        KSU_VERSION=$((10000+200+`git rev-list --count HEAD`))
+        echo "KSU_VERSION: ${KSU_VERSION}"
+        echo "KSU_VERSION=${KSU_VERSION}" >> $GITHUB_ENV
+        cd ..
 
     - name: Generate kernel configuration
       run: |
@@ -121,10 +132,8 @@ jobs:
         export KBUILD_BUILD_HOST=GitHub-Action
         export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
         make -j$(nproc --all) O=out ARCH=${{ env.TARGET_ARCH }} CC=clang ${{ env.KERNEL_DEFCONFIG }}
+        sed -i "s/CONFIG_LOCALVERSION=*/CONFIG_LOCALVERSION=\"_RealKing_KernelSU_${{ env.BUILD_TIME }}\"/g" out/.config
 
-    - name: SSH connection to Actions
-      uses: P3TERX/ssh2actions@v1.0.0
-      if: env.SSH == 'true'
 
     - name: Build kernel
       run: |
@@ -183,16 +192,20 @@ jobs:
             cp -fp ../android-kernel/out/arch/${{ env.TARGET_ARCH }}/boot/${{ env.KERNEL_FILE }} ./
         fi
         if [ ${{ env.CHECK_DTBO_IS_OK }} = true ] ; then
-            cp -fp ../android-kernel/out/arch/${{ env.TARGET_ARCH }}/boot/dtbo.img ./
+            if [ ${{ env.COMPRESS_DTBO_IMAGE }} = true ] ; then
+                cp -fp ../android-kernel/out/arch/${{ env.TARGET_ARCH }}/boot/dtbo.img ./
+            fi
         fi
-        cp -fp ../android-kernel/out/arch/${{ env.TARGET_ARCH }}/boot/dtb ./
+        if [ ${{ env.COMPRESS_DTB }} = true ] ; then
+            cp -fp ../android-kernel/out/arch/${{ env.TARGET_ARCH }}/boot/dtb ./
+        fi
         cp -fp ../android-kernel/out/.config ./
         cp -fp ../android-kernel/out/defconfig ./
-        rm -rf .git* modules patch ramdisk
+        rm -rf .git* modules patch ramdisk README* LICENSE
 
     - name: Upload AnyKernel3
       if: env.CHECK_KERNEL_FILE_IS_OK == 'true'
       uses: actions/upload-artifact@v3
       with:
-        name: AnyKernel3${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
+        name: RealKing-${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
         path: AnyKernel3/*
