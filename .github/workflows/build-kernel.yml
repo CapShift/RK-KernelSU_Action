@@ -101,7 +101,7 @@ jobs:
         echo "KSU_VERSION: ${KSU_VERSION}"
         echo "KSU_VERSION=${KSU_VERSION}" >> $GITHUB_ENV
         cd ..
-        echo "UPLOADNAME=-KernelSU-${{ env.KSU_VERSION }}" >> $GITHUB_ENV
+        echo "UPLOADNAME=-KernelSU-${KSU_VERSION}" >> $GITHUB_ENV
 
         if [ ${{ env.USE_KPROBES }} = true ] ; then
             echo "CONFIG_MODULES=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
