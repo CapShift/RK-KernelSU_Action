@@ -128,6 +128,7 @@ jobs:
         export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
         make -j$(nproc --all) O=out ARCH=${{ env.TARGET_ARCH }} CC=clang ${{ env.KERNEL_DEFCONFIG }}
         sed -i "s/CONFIG_LOCALVERSION=*/CONFIG_LOCALVERSION=\"_RealKing_KernelSU_${{ env.BUILD_TIME }}\"/g" out/.config
+        scripts/config --file out/.config -d LOCALVERSION_AUTO -d CONFIG_DEBUG_FS -e CONFIG_OVERLAY_FS -e CONFIG_MODULES
 
 
     - name: Build kernel
