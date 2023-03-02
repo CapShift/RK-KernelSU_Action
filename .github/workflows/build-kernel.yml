@@ -95,27 +95,28 @@ jobs:
       if: env.USE_KERNELSU == 'true'
       run: |
         cd android-kernel
-        if [ ${{ env.USE_KPROBES }} = true ] ; then
-            echo "CONFIG_MODULES=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
-            echo "CONFIG_KPROBES=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
-            echo "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
-            echo "CONFIG_KPROBE_EVENTS=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
-            curl -LSs "https://raw.github.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
-            echo "UPLOADNAME=-KernelSU" >> $GITHUB_ENV
-        else
-            if git apply --check ../KernelSU.patch ; then
-                git apply ../KernelSU.patch
-                curl -LSs "https://raw.github.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
-                echo "UPLOADNAME=-KernelSU" >> $GITHUB_ENV
-            else
-                echo "KernelSU Patching failed"
-            fi
-        fi
+        curl -LSs "https://raw.github.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
         cd KernelSU
         KSU_VERSION=$((10000+200+`git rev-list --count HEAD`))
         echo "KSU_VERSION: ${KSU_VERSION}"
         echo "KSU_VERSION=${KSU_VERSION}" >> $GITHUB_ENV
         cd ..
+        echo "UPLOADNAME=-KernelSU-${{ env.KSU_VERSION }}" >> $GITHUB_ENV
+
+        if [ ${{ env.USE_KPROBES }} = true ] ; then
+            echo "CONFIG_MODULES=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
+            echo "CONFIG_KPROBES=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
+            echo "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
+            echo "CONFIG_KPROBE_EVENTS=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
+            echo "CONFIG_CONFIG_OVERLAY_FS=y" >> arch/${{ env.TARGET_ARCH }}/configs/${{ env.KERNEL_DEFCONFIG }}
+        else
+            if git apply --check ../KernelSU.patch ; then
+                git apply ../KernelSU.patch
+            else
+                echo "KernelSU Patching failed"
+            fi
+        fi
+        
 
     - name: Generate kernel configuration
       run: |
@@ -128,7 +129,7 @@ jobs:
         export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
         make -j$(nproc --all) O=out ARCH=${{ env.TARGET_ARCH }} CC=clang ${{ env.KERNEL_DEFCONFIG }}
         sed -i "s/CONFIG_LOCALVERSION=*/CONFIG_LOCALVERSION=\"_RealKing_KernelSU_${{ env.BUILD_TIME }}\"/g" out/.config
-        scripts/config --file out/.config -d LOCALVERSION_AUTO -d CONFIG_DEBUG_FS -e CONFIG_OVERLAY_FS -e CONFIG_MODULES
+        scripts/config --file out/.config -d LOCALVERSION_AUTO -d CONFIG_DEBUG_FS
 
 
     - name: Build kernel
